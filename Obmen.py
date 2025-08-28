@@ -3,13 +3,11 @@ from tkinter import ttk
 from tkinter import messagebox as mb
 import requests
 
-
 def update_currency_label(event):
     # Получаем полное название валюты из словаря и обновляем метку
     code = target_combobox.get()
     name = currencies[code]
     currency_label.config(text=name)
-
 
 def exchange():
     target_code = target_combobox.get()
@@ -17,19 +15,36 @@ def exchange():
 
     if target_code and base_code:
         try:
+            # Делаем запрос к API ЦБ РФ
             response = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
             response.raise_for_status()
             data = response.json()
 
-            # Исправленная проверка валюты
-            if 'Valute' in data and target_code in data['Valute']:
-                exchange_rate = data['Valute'][target_code]['Value']
-                mb.showinfo("Курс обмена", f"Курс {target_code} к рублю: {exchange_rate:.2f} руб. за 1 {target_code}")
+            # Получаем курсы обеих валют к рублю
+            if base_code == "RUB":
+                base_rate = 1.0
+            elif 'Valute' in data and base_code in data['Valute']:
+                base_rate = data['Valute'][base_code]['Value']
             else:
-                mb.showerror("Ошибка", f"Валюта {target_code} не найдена")
+                mb.showerror("Ошибка", f"Базовая валюта {base_code} не найдена")
+                return
+
+            if target_code == "RUB":
+                target_rate = 1.0
+            elif 'Valute' in data and target_code in data['Valute']:
+                target_rate = data['Valute'][target_code]['Value']
+            else:
+                mb.showerror("Ошибка", f"Целевая валюта {target_code} не найдена")
+                return
+
+            # Рассчитываем курс между выбранными валютами
+            exchange_rate = target_rate / base_rate
+            mb.showinfo("Курс обмена", f"1 {base_code} = {exchange_rate:.4f} {target_code}")
 
         except Exception as e:
             mb.showerror("Ошибка", f"Ошибка: {e}")
+    else:
+        mb.showwarning("Внимание", "Выберите коды валют")
 
 
 # Словарь кодов валют и их полных названий
@@ -67,6 +82,8 @@ currency_label.pack(padx=10, pady=10)
 Button(text="Получить курс обмена", command=exchange).pack(padx=10, pady=10)
 
 window.mainloop()
+
+
 
 
 
