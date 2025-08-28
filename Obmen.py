@@ -4,35 +4,40 @@ import requests
 import json
 
 def exchange():
-    code = entry.get().upper()
-    if code:
-        try:
-            response = requests.get(f'https://www.cbr-xml-daily.ru/daily_json.js')
-            response.raise_for_status()
-            data = response.json()
+    code = entry.get().strip().upper()
+    if not code:
+        mb.showwarning("Внимание", "Введите код валюты (например, USD, EUR)")
+        return
 
-            if code in data['rates']:
-                exchange_rate = data['rates'][code]
+    try:
+        # Делаем запрос к API ЦБ РФ
+        response = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
+        response.raise_for_status()
+        data = response.json()
 
-                mb.showinfo("Курс обмена", f"Курс к доллару: {exchange_rate:.1f} {code} за 1 доллар")
-            else:
-                mb.showerror("Ошибка", f"Валюта {code} не найдена")
-        except Exception as e:
-            mb.showerror("Ошибка", f"Ошибка: {e}")
+        # Проверяем наличие валюты в ответе
+        if 'Valute' in data and code in data['Valute']:
+            exchange_rate = data['Valute'][code]['Value']
+            mb.showinfo("Курс обмена", f"Курс {code} к рублю: {exchange_rate:.2f} руб. за 1 {code}")
         else:
-            mb.showwarning("Внимание", "Введите код валюты")
+            mb.showerror("Ошибка", f"Валюта с кодом '{code}' не найдена.\nПроверьте правильность кода (например, USD, EUR).")
 
+    except requests.exceptions.RequestException as e:
+        mb.showerror("Ошибка сети", f"Не удалось получить данные: {e}")
+    except json.JSONDecodeError:
+        mb.showerror("Ошибка", "Ошибка обработки данных от сервера.")
+    except Exception as e:
+        mb.showerror("Ошибка", f"Неизвестная ошибка: {e}")
 
-window=Tk()
+# Создаем главное окно
+window = Tk()
 window.title("Курсы обмена валют")
-window.geometry("360x180")
+window.geometry("400x200")
 
-Label(text="Введите код валюты:").pack(padx=10, pady=10) #добавили отступы
-
+Label(text="Введите код валюты (например, USD или EUR):").pack(padx=10, pady=10)
 entry = Entry()
 entry.pack(padx=10, pady=10)
-
-Button(text="Получить курс обмена к доллару", command=exchange).pack(padx=10, pady=10)
+Button(text="Получить курс обмена к рублю", command=exchange).pack(padx=10, pady=10)
 
 window.mainloop()
 
