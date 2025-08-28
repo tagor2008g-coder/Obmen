@@ -1,51 +1,70 @@
 from tkinter import *
+from tkinter import ttk
 from tkinter import messagebox as mb
 import requests
-import json
-from tkinter import ttk
+
+
+def update_currency_label(event):
+    # Получаем полное название валюты из словаря и обновляем метку
+    code = target_combobox.get()
+    name = currencies[code]
+    currency_label.config(text=name)
+
 
 def exchange():
-    code = combobox.get()
-    if not code:
-        mb.showwarning("Внимание", "Введите код валюты (например, USD, EUR)")
-        return
+    target_code = target_combobox.get()
+    base_code = base_combobox.get()
 
-    try:
-        # Делаем запрос к API ЦБ РФ
-        response = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
-        response.raise_for_status()
-        data = response.json()
+    if target_code and base_code:
+        try:
+            response = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
+            response.raise_for_status()
+            data = response.json()
 
-        # Проверяем наличие валюты в ответе
-        if 'Valute' in data and code in data['Valute']:
-            exchange_rate = data['Valute'][code]['Value']
-            mb.showinfo("Курс обмена", f"Курс {code} к рублю: {exchange_rate:.2f} руб. за 1 {code}")
-        else:
-            mb.showerror("Ошибка", f"Валюта с кодом '{code}' не найдена.\nПроверьте правильность кода (например, USD, EUR).")
+            # Исправленная проверка валюты
+            if 'Valute' in data and target_code in data['Valute']:
+                exchange_rate = data['Valute'][target_code]['Value']
+                mb.showinfo("Курс обмена", f"Курс {target_code} к рублю: {exchange_rate:.2f} руб. за 1 {target_code}")
+            else:
+                mb.showerror("Ошибка", f"Валюта {target_code} не найдена")
 
-    except requests.exceptions.RequestException as e:
-        mb.showerror("Ошибка сети", f"Не удалось получить данные: {e}")
-    except json.JSONDecodeError:
-        mb.showerror("Ошибка", "Ошибка обработки данных от сервера.")
-    except Exception as e:
-        mb.showerror("Ошибка", f"Неизвестная ошибка: {e}")
+        except Exception as e:
+            mb.showerror("Ошибка", f"Ошибка: {e}")
 
-# Создаем главное окно
+
+# Словарь кодов валют и их полных названий
+currencies = {
+    "USD": "Американский доллар",
+    "EUR": "Евро",
+    "JPY": "Японская йена",
+    "GBP": "Британский фунт стерлингов",
+    "AUD": "Австралийский доллар",
+    "CAD": "Канадский доллар",
+    "CHF": "Швейцарский франк",
+    "CNY": "Китайский юань",
+    "RUB": "Российский рубль",
+    "KZT": "Казахстанский тенге",
+    "UZS": "Узбекский сум"
+}
+
+# Создание графического интерфейса
 window = Tk()
-window.title("Курсы обмена валют")
-window.geometry("400x200")
+window.title("Курс обмена валюты")
+window.geometry("360x200")
 
+Label(text="Базовая валюта:").pack(padx=10, pady=5)
+base_combobox = ttk.Combobox(values=list(currencies.keys()))
+base_combobox.pack(padx=10, pady=5)
 
-# Список 10 популярных валют
+Label(text="Целевая валюта:").pack(padx=10, pady=5)
+target_combobox = ttk.Combobox(values=list(currencies.keys()))
+target_combobox.pack(padx=10, pady=5)
+target_combobox.bind("<<ComboboxSelected>>", update_currency_label)
 
-cur = ["EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", "RUB", "KZT", "UZS"]
+currency_label = ttk.Label()
+currency_label.pack(padx=10, pady=10)
 
-combobox=ttk.Combobox(values=cur)
-combobox.pack(padx=10, pady=10)
-
-entry = Entry()
-entry.pack(padx=10, pady=10)
-Button(text="Получить курс обмена к рублю", command=exchange).pack(padx=10, pady=10)
+Button(text="Получить курс обмена", command=exchange).pack(padx=10, pady=10)
 
 window.mainloop()
 
